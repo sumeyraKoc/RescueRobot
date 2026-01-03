@@ -1,0 +1,42 @@
+<launch>
+    <!-- parametre yazmak için let tagını kullanırız, evet burda parametre tanımladık-->
+    <let name="urdf_path" 
+         value="$(find-pkg-share duckiebot_description)/urdf/duckiebot.urdf.xacro" />
+    
+
+    <!-- şimdi run edicez aşağıdaki node -->
+    <!-- ros2 run robot_state_publisher robot_state_publisher -ros-args -p robot_description:="$(xacro duckiebot.urdf.xacro)" -->
+
+    <node pkg="robot_state_publisher" exec= "robot_state_publisher">
+        <param name="robot_description"
+               value= "$(command 'xacro $(var urdf_path)')" /> 
+    </node>                      
+
+    <!-- şimdi launch edicez gazeboyu-->
+    <!-- ros2 launch ros_gz_sim gz_sim.launch.py gz_args:="empty.sdf -r"-->
+    
+    <include file="$(find-pkg-share ros_gz_sim)/launch/gz_sim.launch.py"> <!-- terminalden /opt/ros/jazzy ye girip ordan da share klasörüne ordan ros_gz_sim klasörüne geçersen launch dosyasını görürsün, onun da içinde gz_sim.launch var-->
+        <arg name="gz_args" value="$(find-pkg-share duckiebot_bringup)/worlds/collapsed_version2.sdf  -r" />
+        <!-- <arg name="gz_args" value="empty.sdf -r" /> -->
+    </include>
+
+    <!-- şimdi robotu spawn edicez:  -->
+    <!--ros2 run ros_gz_sim create -topic robot_description -->
+    <node pkg="ros_gz_sim" exec="create" args="-topic robot_description"/>   
+
+    <!-- ros2 ile gazebo arasında bridge kuralım -->
+    <node pkg="ros_gz_bridge" exec="parameter_bridge">
+        <param name="config_file" value="$(find-pkg-share duckiebot_bringup)/config/gazebo_bridge.yaml" /> 
+    </node>
+
+    <!-- <node
+        pkg="tf2_ros"
+        exec="static_transform_publisher"
+        name="laser_frame_fix"
+        args="0 0 0 0 0 0 base_scan_link duckiebot/base_footprint/laser"
+        /> -->
+
+    <!-- rvizi start edelim  -->
+    <!-- <node pkg="rviz2" exec="rviz2" output="screen" args="-d $(find-pkg-share duckiebot_description)/rviz/urdf_config2.rviz"/> -->
+    
+</launch>
