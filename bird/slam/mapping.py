@@ -29,14 +29,18 @@ class ArucoSLAM:
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_5X5_100)
         self.parameters = aruco.DetectorParameters_create()
 
+        # --- PROCESS RATE CONTROL ---
+        self.process_freq = 0.03   # ~33 FPS
+        self.last_process_time = rospy.Time.now()
+
         # --- PUBLISHERS ---
         self.pose_pub = rospy.Publisher("/bird/aruco_detector_node/pose", PoseStamped, queue_size=1)
         self.debug_pub = rospy.Publisher("/duckiebot/aruco_debug/image", Image, queue_size=1)
         self.marker_pub = rospy.Publisher("/bird/new_marker_detected", PoseStamped, queue_size=10)
         
         # --- SUBSCRIBERS ---
-        #rospy.Subscriber("/bird/camera_node/image/compressed", CompressedImage, self.image_cb, queue_size=1)
-        rospy.Subscriber("/yolo/image/compressed", CompressedImage, self.image_cb, queue_size=1)
+        rospy.Subscriber("/bird/camera_node/image/compressed", CompressedImage, self.image_cb, queue_size=1)
+        #rospy.Subscriber("/yolo/image/compressed", CompressedImage, self.image_cb, queue_size=1)
         rospy.Subscriber("/bird/fused_pose", PoseStamped, self.pose_cb, queue_size=1)
         
         rospy.loginfo("Aruco SLAM node revize edilmiş haliyle başladı")
@@ -122,8 +126,16 @@ class ArucoSLAM:
         self.pose_pub.publish(pose_msg)
         
     def image_cb(self, msg):
+        
         if self.robot_pose is None:
             return
+
+        current_time = rospy.Time.now()
+
+        if (current_time - self.last_process_time).to_sec() < self.process_freq:
+            return
+
+        self.last_process_time = current_time
 
         np_arr = np.frombuffer(msg.data, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)

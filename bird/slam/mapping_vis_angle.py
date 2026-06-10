@@ -10,6 +10,7 @@ from sensor_msgs.msg import Image, CompressedImage
 from geometry_msgs.msg import PoseStamped
 from cv_bridge import CvBridge
 from std_msgs.msg import String
+from sensor_msgs.msg import Image
 
 import tf.transformations as tft
 
@@ -27,10 +28,24 @@ class PoseVisualizerNode:
         # =========================================
         self.node_map = {}
 
-        self.map_size = 600
-        self.world_max = 2.0
-        self.scale = self.map_size / self.world_max
-        self.margin = 40
+        # kare harita
+        self.map_width = 350
+        self.map_height = 350
+
+        # 2m x 2m dünya
+        self.world_width = 2.0
+        self.world_height = 2.0
+
+        self.margin = 1
+
+        # ayrı scale
+        self.scale_x = (
+            self.map_width - 2*self.margin
+        ) / self.world_width
+
+        self.scale_y = (
+            self.map_height - 2*self.margin
+        ) / self.world_height
 
         # =========================================
         # ROBOT
@@ -62,6 +77,19 @@ class PoseVisualizerNode:
         # =========================================
         # ROS
         # =========================================
+
+        self.viz_pub = rospy.Publisher(
+            "/bird/live_visualization/compressed",
+            CompressedImage,
+            queue_size=1
+        )
+
+        self.new_human_pub = rospy.Publisher(
+            "/bird/new_human_detected",
+            PoseStamped,
+            queue_size=10
+        )
+
         rospy.Subscriber(
             "/duckiebot/aruco_debug/image",
             Image,
@@ -75,7 +103,7 @@ class PoseVisualizerNode:
         )
 
         rospy.Subscriber(
-            "/yolo/bboxes",
+            "/duckie/detections",
             String,
             self.yolo_callback
         )
@@ -84,18 +112,6 @@ class PoseVisualizerNode:
             "/bird/new_marker_detected",
             PoseStamped,
             self.marker_callback
-        )
-
-        self.viz_pub = rospy.Publisher(
-            "/bird/live_visualization/compressed",
-            CompressedImage,
-            queue_size=1
-        )
-
-        self.new_human_pub = rospy.Publisher(
-            "/bird/new_human_detected",
-            PoseStamped,
-            queue_size=10
         )
 
     # =========================================================
@@ -173,8 +189,13 @@ class PoseVisualizerNode:
     # =========================================================
     def world_to_pixel(self, x, y):
 
-        px = int(x * self.scale)
-        py = int(self.map_size - y * self.scale)
+        px = int(x * self.scale_x) + self.margin
+
+        py = int(
+            self.map_height
+            - (y * self.scale_y)
+            - self.margin
+        )
 
         return (px, py)
 
@@ -299,7 +320,7 @@ class PoseVisualizerNode:
 
         cx, cy = center
 
-        size = 32
+        size = 24
         half = size // 2
 
         # dış siyah kare
@@ -371,7 +392,7 @@ class PoseVisualizerNode:
         # MAP BG
         # =========================================
         map_img = np.full(
-            (self.map_size, self.map_size, 3),
+            (self.map_height, self.map_width, 3),
             (40, 40, 45),
             dtype=np.uint8
         )
@@ -387,7 +408,7 @@ class PoseVisualizerNode:
         cv2.rectangle(
             map_img,
             (m, m),
-            (self.map_size - m, self.map_size - m),
+            (self.map_width - m, self.map_height - m),
             wall_color,
             wall_thickness
         )
@@ -446,8 +467,8 @@ class PoseVisualizerNode:
         # =========================================
         if self.robot_pose is not None:
 
-            rx_world = self.robot_pose.pose.position.x
-            ry_world = self.robot_pose.pose.position.y
+            rx_world = self.robot_pose.pose.position.x * 0.9
+            ry_world = self.robot_pose.pose.position.y * 0.9
 
             rx, ry = self.world_to_pixel(
                 rx_world,
@@ -463,7 +484,7 @@ class PoseVisualizerNode:
             cv2.circle(
                 map_img,
                 (rx, ry),
-                12,
+                10,
                 (0, 200, 255),
                 -1
             )
@@ -488,8 +509,8 @@ class PoseVisualizerNode:
         # =========================================
         if self.robot_pose is not None and len(self.bboxes) > 0:
 
-            rx_world = self.robot_pose.pose.position.x
-            ry_world = self.robot_pose.pose.position.y
+            rx_world = self.robot_pose.pose.position.x * 0.9
+            ry_world = self.robot_pose.pose.position.y * 0.9
 
             q = self.robot_pose.pose.orientation
 
@@ -500,6 +521,10 @@ class PoseVisualizerNode:
             for box in self.bboxes:
 
                 d = box.get("distance", None)
+                    
+                # 30 cm'den uzaktaki insanları yok say
+                if d > 0.30:
+                    continue
 
                 if d is None:
                     continue
@@ -516,12 +541,22 @@ class PoseVisualizerNode:
                 bx_world = rx_world + d * np.cos(global_angle)
                 by_world = ry_world + d * np.sin(global_angle)
 
-                # TRACK UPDATE
+                # =========================================
+                # MAP BOUNDARY CHECK
+                # =========================================
+                if (
+                    bx_world < 0 or
+                    bx_world > self.world_width or
+                    by_world < 0 or
+                    by_world > self.world_height
+                ):
+                    continue
+
                 self.human_localization(
                     bx_world,
                     by_world
                 )
-
+                
 
         # =========================================
         # DRAW TRACKED HUMANS
@@ -536,7 +571,7 @@ class PoseVisualizerNode:
             cv2.circle(
                 map_img,
                 (px, py),
-                12,
+                10,
                 (0, 0, 255),
                 -1
             )
@@ -556,11 +591,11 @@ class PoseVisualizerNode:
         # =========================================
         h, w = self.camera_image.shape[:2]
 
-        scale_ratio = self.map_size / h
+        scale_ratio = self.map_height / h
 
         cam_resized = cv2.resize(
             self.camera_image,
-            (int(w * scale_ratio), self.map_size)
+            (int(w * scale_ratio), self.map_height)
         )
 
         combined = np.hstack((cam_resized, map_img))
