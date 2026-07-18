@@ -2,10 +2,11 @@
 
 This section explains how to set up the development environment and run the software on a real Duckiebot.
 
-The project is organized into two main modules:
+The project is organized into three main modules:
 
 - **Perception** – responsible for detecting humans and processing visual information.
 - **Localization** – responsible for robot localization using ArUco markers and SLAM.
+- **Web Dashboard** – Receives data from the Duckiebot in real time and presents the robot's status and detection results through a user-friendly web interface.
 
 Follow the instructions below to prepare your environment, deploy the code, and run each module.
 
@@ -379,3 +380,5 @@ Then follow the **same setup and execution steps** described above:
 6. Run the launcher using the appropriate DTS command.
 
 The execution procedure is identical to the **Localization and Human Detection** module.
+
+# Web Dashboard
