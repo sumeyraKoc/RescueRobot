@@ -12,7 +12,98 @@ Follow the instructions below to prepare your environment, deploy the code, and 
 
 # Perception
 
-> Documentation for the perception module is currently under development and will be added soon.
+> Documentation for the perception module is currently under development and full version will be added soon.
+
+## Camera Setup
+
+Before running the perception module, both cameras must be mounted securely on the robot.
+
+### Duckiebot Camera
+
+- The Duckiebot camera should remain in its default mounting position.
+- Make sure the camera is firmly attached and does not move during operation.
+- If the camera position changes, a new camera calibration and homography calibration should be performed.
+
+### Raspberry Pi NoIR Camera
+
+- Mount the NoIR camera so that it observes approximately the same forward scene as the Duckiebot camera.
+- Ensure the camera is rigidly fixed to prevent vibrations or movement.
+- The camera orientation used in this project assumes a 180° rotation because it mounted reverse to do not cause damage to ribbon cable to RaspberryPI 3B, which is corrected in software.
+
+---
+
+## Camera Alignment
+
+Accurate localization depends on proper camera alignment.
+
+When installing the cameras:
+
+- Align both cameras so they face forward.
+- Minimize the horizontal offset between the two optical axes.
+- Avoid changing the camera height or tilt after calibration.
+- Ensure the ground plane is clearly visible in the lower portion of the image.
+
+If any camera is repositioned, the following should be recalculated:
+
+- Camera calibration parameters.
+- Homography matrix.
+- Region of Interest (ROI), if necessary.
+
+---
+
+## Running the Perception Module
+
+Before running the perception system:
+
+1. Start the Duckiebot and ensure ROS is running.
+2. Verify that the Duckiebot camera is publishing images.
+3. Start the Raspberry Pi camera stream by connecting the Raspberry Pi by SSH.
+4. Start the stream by hand in PI console with [rpicam-vid](https://www.raspberrypi.com/documentation/computers/camera_software.html) commands via using TCP port.
+5. Update the IP addresses in the configuration files if required.
+6. Verify that the model weights are downloaded and the correct path is specified.
+
+Run the perception module:
+
+```bash
+python detection.py
+```
+> Path in the work looks well in standalone but at full packaging with other modules like navigation,localization,dead reckoning etc. you may have to handle it.
+
+The system will:
+
+- Connect to both cameras.
+- Process incoming frames.
+- Detect people in real time.
+- Estimate the distance using planar homography and viewing angle of each detection.
+- Publish the detection results through ROS.
+- Display the processed camera streams and boxes.
+
+---
+
+## Configuration
+
+Before running the project, verify the following configuration files:
+
+- `duckie_config.py` – Duckiebot WebSocket address and camera topic.
+- `pi_camera_config.py` – Raspberry Pi TCP video stream address.
+- `ros_config.py` – ROS bridge WebSocket address.
+- `camera_controls.json` – Image processing parameters.
+- `duckie_calibration.py` – Camera intrinsic parameters and distortion coefficients.
+
+These files should be updated to match your hardware and network configuration.
+
+---
+
+## Calibration Notes
+
+For reliable localization:
+
+- Perform camera calibration at the same resolution used during inference.
+- Compute the homography matrix after the camera has been mounted.
+- Avoid changing the camera position after calibration.
+- Recalibrate if the camera mount, height, or viewing angle changes.
+
+Proper calibration significantly improves distance estimation accuracy.
 
 # Localization
 Before running the project on a real Duckiebot, make sure your development environment is properly configured.
