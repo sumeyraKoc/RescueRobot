@@ -12,8 +12,6 @@ Follow the instructions below to prepare your environment, deploy the code, and 
 
 # Perception
 
-> Documentation for the perception module is currently under development and full version will be added soon.
-
 ## Camera Setup
 
 Before running the perception module, both cameras must be mounted securely on the robot.
@@ -106,7 +104,7 @@ For reliable localization:
 Proper calibration significantly improves distance estimation accuracy.
 
 # Localization
-Before running the project on a real Duckiebot, make sure your development environment is properly configured.
+Before running the project on a real Duckiebot, make sure your development environment is properly configured as follows:
 
 ## Prerequisites
 
@@ -471,5 +469,45 @@ Then follow the **same setup and execution steps** described above:
 6. Run the launcher using the appropriate DTS command.
 
 The execution procedure is identical to the **Localization and Human Detection** module.
+
+# Troubleshooting
+
+## Nothing Appears in the Visualization
+
+If nothing is displayed in the visualization window, the most likely cause is that one or more of the subscribed ROS topics are not being published correctly.
+
+Make sure that all required topics are active before running the project.
+
+You can verify a topic using the following commands:
+
+Start the GUI tools:
+
+```bash
+dts start_gui_tools <ROBOT_NAME>
+```
+
+Then check the desired topic:
+
+```bash
+rostopic echo <TOPIC_NAME>
+```
+
+If a topic does not publish any messages, verify that the corresponding ROS node is running correctly.
+
+---
+
+## Slow Build or Poor System Performance
+
+If the build process becomes unusually slow or your computer starts experiencing performance issues, Docker storage usage may be the cause.
+
+Since this project requires frequent rebuilding during development, Docker can accumulate a large number of unused images, containers, and cache files. Over time, these files may consume a significant amount of disk space, resulting in slower builds and degraded system performance.
+
+We recommend periodically cleaning up unused Docker resources by running:
+
+```bash
+docker system prune
+```
+
+> **Warning:** This command removes unused Docker images, containers, networks, and build cache. Make sure you do not need these resources before executing the command.
 
 # Web Dashboard
