@@ -509,5 +509,3 @@ docker system prune
 ```
 
 > **Warning:** This command removes unused Docker images, containers, networks, and build cache. Make sure you do not need these resources before executing the command.
-
-# Web Dashboard
